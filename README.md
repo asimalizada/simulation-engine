@@ -8,13 +8,7 @@ A modular simulation engine implemented in C#. This project provides core infras
 
 - [About](#about)  
 - [Features](#features)  
-- [Architecture](#architecture)  
-- [Modules](#modules)  
-- [Getting Started](#getting-started)  
-- [Building & Running Tests](#building--running-tests)  
-- [Usage](#usage)  
-- [Contributing](#contributing)  
-- [License](#license)
+- [Architecture](#architecture)
 
 ---
 
