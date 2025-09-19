@@ -1,0 +1,60 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36414.22 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{AA435FD6-7C1F-41E2-AD67-501DD5DA4E03}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "medieval-sim.core", "medieval-sim.core\medieval-sim.core.csproj", "{BB3922DB-F3CB-4344-93D4-0D684AC4BD28}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "medieval-sim.modules.world", "medieval-sim.modules.world\medieval-sim.modules.world.csproj", "{E5A33190-0989-4046-B969-1818FD85FC24}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "medieval-sim.modules.economy", "medieval-sim.modules.economy\medieval-sim.modules.economy.csproj", "{6BEAE58E-FF8D-4F1D-82D3-6EE0774661A7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "medieval-sim.sandbox", "medieval-sim.sandbox\medieval-sim.sandbox.csproj", "{9049A1EB-BAB7-401A-8689-02F8250BBAD2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "medieval-sim.tests", "medieval-sim.tests\medieval-sim.tests.csproj", "{F959F839-67F1-4AB1-B84B-200E20A61BF6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BB3922DB-F3CB-4344-93D4-0D684AC4BD28}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BB3922DB-F3CB-4344-93D4-0D684AC4BD28}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BB3922DB-F3CB-4344-93D4-0D684AC4BD28}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BB3922DB-F3CB-4344-93D4-0D684AC4BD28}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5A33190-0989-4046-B969-1818FD85FC24}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5A33190-0989-4046-B969-1818FD85FC24}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5A33190-0989-4046-B969-1818FD85FC24}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5A33190-0989-4046-B969-1818FD85FC24}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6BEAE58E-FF8D-4F1D-82D3-6EE0774661A7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6BEAE58E-FF8D-4F1D-82D3-6EE0774661A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6BEAE58E-FF8D-4F1D-82D3-6EE0774661A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6BEAE58E-FF8D-4F1D-82D3-6EE0774661A7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9049A1EB-BAB7-401A-8689-02F8250BBAD2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9049A1EB-BAB7-401A-8689-02F8250BBAD2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9049A1EB-BAB7-401A-8689-02F8250BBAD2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9049A1EB-BAB7-401A-8689-02F8250BBAD2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F959F839-67F1-4AB1-B84B-200E20A61BF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F959F839-67F1-4AB1-B84B-200E20A61BF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F959F839-67F1-4AB1-B84B-200E20A61BF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F959F839-67F1-4AB1-B84B-200E20A61BF6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{BB3922DB-F3CB-4344-93D4-0D684AC4BD28} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{E5A33190-0989-4046-B969-1818FD85FC24} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{6BEAE58E-FF8D-4F1D-82D3-6EE0774661A7} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{9049A1EB-BAB7-401A-8689-02F8250BBAD2} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{F959F839-67F1-4AB1-B84B-200E20A61BF6} = {AA435FD6-7C1F-41E2-AD67-501DD5DA4E03}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {7235CF58-E781-492A-934A-F0E595C7168A}
+	EndGlobalSection
+EndGlobal

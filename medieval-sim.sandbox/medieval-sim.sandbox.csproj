@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>medieval_sim.sandbox</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\medieval-sim.modules.economy\medieval-sim.modules.economy.csproj" />
+    <ProjectReference Include="..\medieval-sim.modules.world\medieval-sim.modules.world.csproj" />
+  </ItemGroup>
+
+</Project>
