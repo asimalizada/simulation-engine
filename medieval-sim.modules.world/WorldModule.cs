@@ -13,8 +13,13 @@ public sealed class WorldModule : IModule
 
     public void Configure(EngineBuilder b)
     {
-        b.AddSystem(new MarketPricingSystem())
-         .AddSystem(new HouseholdIncomeSystem())
+        b.AddSystem(new PopulationGenerationSystem())
+         .AddSystem(new PassionAssignmentSystem())   // NEW
+         .AddSystem(new FamilyGenerationSystem())    // NEW
+         .AddSystem(new MarketPricingSystem())
+         .AddSystem(new LeadershipSelectionSystem())
+         .AddSystem(new LeadershipStipendSystem())
+         .AddSystem(new WageSystem())
          .AddSystem(new FoodProductionSystem())
          .AddSystem(new FeedingSystem())
          .AddSystem(new TradeSystem());
@@ -213,6 +218,34 @@ public sealed class WorldModule : IModule
             });
         }
         Next(ctx.Clock.Now);
+    }
+
+    private EntityId NewEconomy(EngineContext ctx, string name, Action<SettlementEconomy> cfg)
+    {
+        var id = ctx.World.Create();
+        var e = new SettlementEconomy { Name = name };
+        // default wages (tune as you like)
+        foreach (Profession p in Enum.GetValues(typeof(Profession)))
+            e.DailyWage[p] = p switch
+            {
+                Profession.Farmer => 1.0,
+                Profession.Soldier or Profession.Guard => 1.2,
+                Profession.Blacksmith or Profession.Carpenter => 1.5,
+                Profession.Merchant or Profession.Scribe => 1.6,
+                Profession.Noble => 2.0,
+                _ => 1.1
+            };
+        cfg(e);
+        ctx.World.Set(id, e);
+        return id;
+    }
+
+    private void AddSpecialties(EngineContext ctx, EntityId sid, Action<SettlementSpecialties> cfg)
+    {
+        var id = ctx.World.Create();
+        var sp = new SettlementSpecialties();
+        cfg(sp);
+        ctx.World.Set(id, sp);
     }
 
 }

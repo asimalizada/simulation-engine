@@ -24,7 +24,12 @@ public sealed class FoodProductionSystem : ISystem
 
             // monetized tithe on production at current local price
             double titheCoins = prod * f.Policy.Taxes.TitheRate * market.PriceFood;
-            f.Treasury += titheCoins;
+
+            // split 50% to faction, 50% to local wage pool
+            var econ = ctx.World.Get<SettlementEconomy>(s.EconomyId);
+            double toLocal = titheCoins * 0.5;
+            econ.WagePoolCoins += toLocal;
+            f.Treasury += (titheCoins - toLocal);
 
             // Book supply offered later (set at 08:00 each day)
             // nothing here; see MarketPricingSystem

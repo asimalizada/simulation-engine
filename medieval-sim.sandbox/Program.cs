@@ -94,6 +94,18 @@ public static class Program
                 foreach (var hh in s.Households) { householdFood += hh.Food; wealth += hh.Wealth; }
                 double daysBuffered = perDay > 0 ? (householdFood + s.FoodStock) / perDay : 0;
                 Console.WriteLine($"  - {s.Name} [{f.Name}]: Price={m.PriceFood:0.00}{(m.IsFairDay ? " (fair)" : "")}, Granary={Math.Round(s.FoodStock, 1)}, HHFood={Math.Round(householdFood, 1)} (~{daysBuffered:0.0}d), MissedMealsToday≈{s.MealsMissedToday:0.0}, HH wealth≈{wealth:0.0}");
+                var fams = ctx.World.Components.FirstOrDefault(kv => kv.Value is SettlementFamilies sf && sf.SettlementId.Equals(kv.Key)).Value as SettlementFamilies;
+
+                if (fams != null)
+                    Console.WriteLine($"      Families={fams.Families.Count}");
+
+                var firstHH = s.Households.FirstOrDefault();
+                var firstP = firstHH?.People?.FirstOrDefault();
+                if (firstP != null && firstP.Passions.Count > 0)
+                {
+                    var p0 = firstP.Passions[0];
+                    Console.WriteLine($"      Sample passion: {p0.Passion} {p0.Level:0.00} (prof {firstP.Profession}, age {firstP.Age})");
+                }
             }
         }
     }

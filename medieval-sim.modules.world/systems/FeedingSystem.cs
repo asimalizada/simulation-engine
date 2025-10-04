@@ -52,7 +52,11 @@ public sealed class FeedingSystem : ISystem
                     double fee = cost * feeRate;
 
                     hh.Wealth -= (cost + fee);
-                    f.Treasury += fee;       // market fee revenue
+                    var econ = ctx.World.Get<SettlementEconomy>(s.EconomyId);
+                    double toSettlement = fee * 0.6;  // 60% to local wage pool
+                    double toFaction = fee - toSettlement;
+                    econ.WagePoolCoins += toSettlement;
+                    f.Treasury += toFaction;
                     s.FoodStock -= purch;
                     hh.Food += purch;
                 }

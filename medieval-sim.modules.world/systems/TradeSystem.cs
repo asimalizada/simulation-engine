@@ -131,6 +131,10 @@ public sealed class TradeSystem : ISystem
                     double toll = ship * tollPerUnit;
 
                     b.f.Treasury -= (cost + fee + toll);
+                    var econDest = ctx.World.Get<SettlementEconomy>(b.s.EconomyId);
+                    econDest.WagePoolCoins += toll * 0.6;  // 60% to local
+                    b.f.Treasury += 0;            // remainder already deducted from buyer; if you want central share:
+                    b.f.Treasury += toll * 0.4;
                     si.avail -= ship;
                     remaining -= ship;
 

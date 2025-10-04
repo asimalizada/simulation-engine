@@ -9,7 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\medieval-sim.modules.economy\medieval-sim.modules.economy.csproj" />
     <ProjectReference Include="..\medieval-sim.modules.world\medieval-sim.modules.world.csproj" />
   </ItemGroup>
 
