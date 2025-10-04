@@ -1,7 +1,10 @@
-﻿namespace medieval_sim.modules.world.components;
+﻿using medieval_sim.core.ECS;
+
+namespace medieval_sim.modules.world.components;
 
 public sealed class SettlementEconomy
 {
+    public EntityId SelfId;
     public string Name = "";
     public double WagePoolCoins = 0.0;
 

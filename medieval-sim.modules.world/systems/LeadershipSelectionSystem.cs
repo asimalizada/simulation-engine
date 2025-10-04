@@ -10,63 +10,69 @@ public sealed class LeadershipSelectionSystem : ISystem
 
     public void Tick(EngineContext ctx)
     {
-        // Run at 07:00 on day 1, then yearly on 01/01 07:00
         var now = ctx.Clock.Now;
         if (now.Hour != 7) return;
 
-        foreach (var kv in ctx.World.Components)
-        {
-            if (kv.Value is not Faction f) continue;
+        var factions = ctx.World.Components
+            .Where(kv => kv.Value is Faction)
+            .Select(kv => (id: kv.Key, f: (Faction)kv.Value))
+            .ToList();
 
-            var lead = EnsureLeadership(ctx, f);
-            // Re-select at start of the year or if any empty
+        foreach (var (fid, f) in factions)
+        {
+            var lead = GetOrCreateLeadership(ctx, fid);
+
+            // Re-select yearly or if any slot is empty
             if (now.DayOfYear == 1 || lead.Sovereign is null || lead.Chancellor is null || lead.Marshal is null)
-                SelectLeaders(ctx, f, lead);
+            {
+                SelectLeaders(ctx, fid, f, lead);
+            }
         }
     }
 
-    private static FactionLeadership EnsureLeadership(EngineContext ctx, Faction f)
+    private static FactionLeadership GetOrCreateLeadership(EngineContext ctx, EntityId factionId)
     {
-        // if no leadership component yet, attach one
+        // Try to find an existing leadership tied to this faction
         foreach (var kv in ctx.World.Components)
-            if (kv.Value is FactionLeadership fl && ReferenceEquals(f, ctx.World.Get<Faction>(kv.Key))) return fl;
+            if (kv.Value is FactionLeadership fl && fl.OwnerFactionId.Equals(factionId))
+                return fl;
 
+        // Create one if missing (safe because we are NOT iterating components here)
         var id = ctx.World.Create();
-        var flNew = new FactionLeadership();
+        var flNew = new FactionLeadership { OwnerFactionId = factionId };
         ctx.World.Set(id, flNew);
         return flNew;
     }
 
-    private static void SelectLeaders(EngineContext ctx, Faction f, FactionLeadership lead)
+    private static void SelectLeaders(EngineContext ctx, EntityId factionId, Faction f, FactionLeadership lead)
     {
-        // collect all persons in this faction
+        // SNAPSHOT all persons belonging to settlements of this faction
         var people = ctx.World.Components
-            .Where(kv => kv.Value is Settlement s && ReferenceEquals(ctx.World.Get<Faction>(s.FactionId), f))
+            .Where(kv => kv.Value is Settlement s && s.FactionId.Equals(factionId))
             .SelectMany(kv =>
             {
-                var s = (Settlement)kv.Value;
                 var sid = kv.Key;
-                return s.Households.SelectMany((hh, hi) => hh.People.Select((p, pi) =>
-                    (pref: new PersonRef(sid, hi, pi), p, s)));
+                var s = (Settlement)kv.Value;
+                return s.Households.SelectMany((hh, hi) =>
+                    hh.People.Select((p, pi) => (pref: new PersonRef(sid, hi, pi), p, s)));
             })
             .Where(x => x.p.Age >= 18)
             .ToList();
 
         if (people.Count == 0) return;
 
-        // simple scoring helpers
-        double Score((PersonRef pref, Person p, Settlement s) x, Func<Profession, bool> prefer)
+        // Scoring helpers
+        static double Score((PersonRef pref, Person p, Settlement s) x, Func<Profession, bool> prefer)
         {
             double prof = prefer(x.p.Profession) ? 40 : 0;
             double wealth = x.s.Households[x.pref.HouseholdIndex].Wealth;
-            double wScore = Math.Min(20, wealth); // cap
+            double wScore = Math.Min(20, wealth);
             double age = (x.p.Age >= 25 && x.p.Age <= 60) ? 10 : 0;
             return prof + x.p.Skill + wScore + age;
         }
-
-        bool IsNoble(Profession p) => p == Profession.Noble || p == Profession.Merchant;
-        bool IsAdmin(Profession p) => p == Profession.Scribe || p == Profession.Merchant || p == Profession.Priest;
-        bool IsSoldier(Profession p) => p == Profession.Soldier || p == Profession.Guard || p == Profession.Blacksmith;
+        static bool IsNoble(Profession p) => p == Profession.Noble || p == Profession.Merchant;
+        static bool IsAdmin(Profession p) => p == Profession.Scribe || p == Profession.Merchant || p == Profession.Priest;
+        static bool IsSoldier(Profession p) => p == Profession.Soldier || p == Profession.Guard || p == Profession.Blacksmith;
 
         var sovereign = people.OrderByDescending(x => Score(x, IsNoble)).First();
         var chancellor = people.OrderByDescending(x => Score(x, IsAdmin)).First();

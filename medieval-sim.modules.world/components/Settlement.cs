@@ -4,6 +4,7 @@ namespace medieval_sim.modules.world.components;
 
 public sealed class Settlement
 {
+    public EntityId SelfId;
     public string Name = "";
     public int Pop = 0;
     public EntityId FactionId;
@@ -15,4 +16,6 @@ public sealed class Settlement
     public List<Household> Households = new();
 
     public double MealsMissedToday = 0;
+    public bool PopulationInitialized;
+    public EntityId SpecialtiesId;
 }

@@ -1,7 +1,10 @@
-﻿namespace medieval_sim.modules.world.components;
+﻿using medieval_sim.core.ECS;
+
+namespace medieval_sim.modules.world.components;
 
 public sealed class SettlementMarket
 {
+    public EntityId SelfId;
     public string Name = "";
     public double PriceFood = 1.0;   // coins per unit
     public double FeeRateOverride = -1;  // <0 => use faction.tax.MarketFeeRate

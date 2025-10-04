@@ -1,7 +1,10 @@
-﻿namespace medieval_sim.modules.world.components;
+﻿using medieval_sim.core.ECS;
+
+namespace medieval_sim.modules.world.components;
 
 public sealed class FactionLeadership
 {
+    public EntityId OwnerFactionId;
     public PersonRef? Sovereign;   // King/Queen/Regent
     public PersonRef? Chancellor;  // administrator / minister
     public PersonRef? Marshal;     // military captain

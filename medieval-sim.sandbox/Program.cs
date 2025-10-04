@@ -75,38 +75,77 @@ public static class Program
     private static void DumpStatus(EngineContext ctx, IClock clock, bool final = false)
     {
         var mark = final ? "[FINAL]" : "[STATUS]";
-        Console.WriteLine($"{mark} Time={clock.Now}");
+        Console.WriteLine($"{mark} {clock.Now:yyyy-MM-dd HH:mm}");
 
-        // Factions
-        foreach (var kv in ctx.World.Components)
-            if (kv.Value is Faction f)
-                Console.WriteLine($"  Faction: {f.Name}  Treasury={Math.Round(f.Treasury, 1)}  Taxes(Tithe/Market/Toll)={f.Policy.Taxes.TitheRate:P0}/{f.Policy.Taxes.MarketFeeRate:P0}/{f.Policy.Taxes.TransitTollPerUnit:0.00}");
+        // ===== snapshot world once to avoid 'modified during enumeration' =====
+        var comps = ctx.World.Components.ToList();
 
-        // Settlements
-        foreach (var kv in ctx.World.Components)
+        var factions = comps
+            .Where(kv => kv.Value is Faction)
+            .Select(kv => (id: kv.Key, f: (Faction)kv.Value))
+            .ToList();
+
+        var settlements = comps
+            .Where(kv => kv.Value is Settlement)
+            .Select(kv => (id: kv.Key, s: (Settlement)kv.Value))
+            .ToList();
+
+        var leadershipByFaction = comps
+            .Where(kv => kv.Value is FactionLeadership)
+            .Select(kv => (FactionLeadership)kv.Value)
+            .ToDictionary(x => x.OwnerFactionId, x => x);
+
+        // ===== factions =====
+        foreach (var (fid, f) in factions)
         {
-            if (kv.Value is Settlement s)
-            {
-                var f = ctx.World.Get<Faction>(s.FactionId);
-                var m = ctx.World.Get<SettlementMarket>(s.MarketId);
-                double perDay = f.Policy.DailyFoodPerPerson * Math.Max(1, s.Pop);
-                double householdFood = 0; double wealth = 0;
-                foreach (var hh in s.Households) { householdFood += hh.Food; wealth += hh.Wealth; }
-                double daysBuffered = perDay > 0 ? (householdFood + s.FoodStock) / perDay : 0;
-                Console.WriteLine($"  - {s.Name} [{f.Name}]: Price={m.PriceFood:0.00}{(m.IsFairDay ? " (fair)" : "")}, Granary={Math.Round(s.FoodStock, 1)}, HHFood={Math.Round(householdFood, 1)} (~{daysBuffered:0.0}d), MissedMealsToday≈{s.MealsMissedToday:0.0}, HH wealth≈{wealth:0.0}");
-                var fams = ctx.World.Components.FirstOrDefault(kv => kv.Value is SettlementFamilies sf && sf.SettlementId.Equals(kv.Key)).Value as SettlementFamilies;
+            var leaderTxt = leadershipByFaction.TryGetValue(fid, out var L)
+                ? $"  Leaders: {ShortLeader(ctx, L.Sovereign)}/{ShortLeader(ctx, L.Chancellor)}/{ShortLeader(ctx, L.Marshal)}"
+                : string.Empty;
 
-                if (fams != null)
-                    Console.WriteLine($"      Families={fams.Families.Count}");
+            Console.WriteLine($"  Faction: {f.Name}  Treasury={Math.Round(f.Treasury, 1)}  Taxes={f.Policy.Taxes.TitheRate:P0}/{f.Policy.Taxes.MarketFeeRate:P0}/{f.Policy.Taxes.TransitTollPerUnit:0.00}{leaderTxt}");
+        }
 
-                var firstHH = s.Households.FirstOrDefault();
-                var firstP = firstHH?.People?.FirstOrDefault();
-                if (firstP != null && firstP.Passions.Count > 0)
-                {
-                    var p0 = firstP.Passions[0];
-                    Console.WriteLine($"      Sample passion: {p0.Passion} {p0.Level:0.00} (prof {firstP.Profession}, age {firstP.Age})");
-                }
-            }
+        // ===== settlements =====
+        foreach (var (sid, s) in settlements)
+        {
+            var f = ctx.World.Get<Faction>(s.FactionId);
+            var m = ctx.World.Get<SettlementMarket>(s.MarketId);
+            var econ = ctx.World.Get<SettlementEconomy>(s.EconomyId);
+
+            // quick sums
+            double hhFood = 0, hhWealth = 0; int pop = 0;
+            foreach (var hh in s.Households) { hhFood += hh.Food; hhWealth += hh.Wealth; pop += hh.Size; }
+            if (pop <= 0) pop = Math.Max(1, s.Pop); // fallback cache
+
+            double perDay = f.Policy.DailyFoodPerPerson * pop;
+            double daysBuffered = perDay > 0 ? (hhFood + s.FoodStock) / perDay : 0;
+
+            // families (if present)
+            int famCount = comps
+                .Where(kv => kv.Value is SettlementFamilies sf && sf.SettlementId.Equals(sid))
+                .Select(kv => ((SettlementFamilies)kv.Value).Families.Count)
+                .FirstOrDefault();
+
+            Console.WriteLine(
+                $"  - {s.Name} [{f.Name}]: " +
+                $"Pop={pop}, Price={m.PriceFood:0.00}{(m.IsFairDay ? " (fair)" : "")}, " +
+                $"Granary={Math.Round(s.FoodStock, 1)}, HHFood={Math.Round(hhFood, 1)}, " +
+                $"~{daysBuffered:0.0}d, WagePool={Math.Round(econ.WagePoolCoins, 1)}, " +
+                $"Families={famCount}, Missed={s.MealsMissedToday:0.0}");
+        }
+
+        // ---- local helpers ----
+        static string ShortLeader(EngineContext c, PersonRef? pr)
+        {
+            if (pr is null) return "--";
+            var (sid, hi, pi) = pr.Value;
+            var s = c.World.Get<Settlement>(sid);
+            if (hi < 0 || hi >= s.Households.Count) return "--";
+            var hh = s.Households[hi];
+            if (pi < 0 || pi >= hh.People.Count) return "--";
+            var p = hh.People[pi];
+            return $"{p.Profession}/{p.Age}";
         }
     }
+
 }

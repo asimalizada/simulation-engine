@@ -4,6 +4,7 @@ namespace medieval_sim.modules.world.components;
 
 public sealed class Faction
 {
+    public EntityId SelfId;
     public string Name = "";
     public double Treasury = 0;
 

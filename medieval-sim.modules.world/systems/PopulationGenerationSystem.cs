@@ -5,7 +5,7 @@ using medieval_sim.modules.world.components;
 
 namespace medieval_sim.modules.world.systems;
 
-// Runs until all households have People == Size, then becomes a no-op.
+// Runs until a settlement has generated all persons once, then no-ops.
 public sealed class PopulationGenerationSystem : ISystem
 {
     public int Order => 5;
@@ -14,24 +14,29 @@ public sealed class PopulationGenerationSystem : ISystem
     {
         var rng = ctx.Rng;
 
-        foreach (var kv in ctx.World.Components)
+        // SNAPSHOT settlements once
+        var settlements = ctx.World.Components
+            .Where(kv => kv.Value is Settlement)
+            .Select(kv => (id: kv.Key, s: (Settlement)kv.Value))
+            .ToList();
+
+        foreach (var (sid, s) in settlements)
         {
-            if (kv.Value is not Settlement s) continue;
+            // Optional fast gate: store a flag on Settlement so we don't redo work every tick
+            // Add this field to Settlement if you haven't yet: public bool PopulationInitialized;
+            if (s.PopulationInitialized) continue;
 
-            // Ensure specialties + economy exist
-            var spec = TryGet<SettlementSpecialties>(ctx, s);
-            var econ = ctx.World.Get<SettlementEconomy>(s.EconomyId);
+            // Get specialties if you attached one to this settlement
+            var spec = s.SpecialtiesId.Value != default ? ctx.World.Get<SettlementSpecialties>(s.SpecialtiesId) : null;
 
-            foreach (var (hh, hIndex) in s.Households.Select((h, i) => (h, i)))
+            // Fill households with people
+            for (int h = 0; h < s.Households.Count; h++)
             {
-                if (hh.People.Count >= hh.Size)
-                    continue;
-
-                // fill the household with Size people
+                var hh = s.Households[h];
                 while (hh.People.Count < hh.Size)
                 {
                     var prof = SampleProfession(rng, spec);
-                    int age = SampleAge(rng); // adults dominate
+                    int age = SampleAge(rng);
                     double skill = Math.Clamp(age * 1.2 + rng.NextDouble() * 10, 0, 100);
 
                     hh.People.Add(new Person
@@ -43,24 +48,38 @@ public sealed class PopulationGenerationSystem : ISystem
                 }
             }
 
-            // very light-weight relations: add 2 random acquaintances per person within settlement
-            var sid = FindSettlementId(ctx, s);
-            var all = s.Households.SelectMany((h, hi) => h.People.Select((p, pi) => (person: p, pref: new PersonRef(sid, hi, pi)))).ToList();
-
-            foreach (var entry in all)
+            // Build a flat index of people with their PersonRef
+            var all = new List<(Person person, PersonRef pref)>(s.Pop);
+            for (int hi = 0; hi < s.Households.Count; hi++)
             {
-                var p = entry.person;
-                var pref = entry.pref;
+                var hh = s.Households[hi];
+                for (int pi = 0; pi < hh.People.Count; pi++)
+                    all.Add((hh.People[pi], new PersonRef(sid, hi, pi)));
+            }
 
-                for (int k = 0; k < 2; k++)
+            // Add 2 random acquaintances per person (no duplicates, no self)
+            for (int i = 0; i < all.Count; i++)
+            {
+                var (p, pref) = all[i];
+
+                int links = 0;
+                int guard = 0;
+                while (links < 2 && guard < 16) // guard avoids infinite loop if very small populations
                 {
-                    var other = all[rng.Next(0, all.Count)];
-                    if (other.pref.Equals(pref)) continue;
+                    guard++;
+                    var (op, oref) = all[rng.Next(0, all.Count)];
+                    if (oref.Equals(pref)) continue;
+
+                    // already have a relation?
+                    if (p.Relations.Any(r => r.Target.Equals(oref))) continue;
 
                     int score = rng.Next(-5, 21); // -5..20
-                    p.Relations.Add(new Relation { Target = other.pref, Score = score });
+                    p.Relations.Add(new Relation { Target = oref, Score = score });
+                    links++;
                 }
             }
+
+            s.PopulationInitialized = true; // <-- set the flag so we don't run again
         }
     }
 
@@ -78,30 +97,29 @@ public sealed class PopulationGenerationSystem : ISystem
                 (Profession.Brewer,0.3)
         };
 
+        // sum with specialty multipliers
         double sum = 0;
-        foreach (var b in baseW)
-            sum += b.w * (spec != null && spec.Weights.TryGetValue(b.p, out var boost) ? boost : 1.0);
+        for (int i = 0; i < baseW.Length; i++)
+        {
+            var (p, w) = baseW[i];
+            if (spec != null && spec.Weights.TryGetValue(p, out var boost)) w *= boost;
+            sum += w;
+            baseW[i].w = w; // reuse weighted value
+        }
 
         double r = rng.NextDouble() * sum;
-        foreach (var b in baseW)
+        for (int i = 0; i < baseW.Length; i++)
         {
-            double w = b.w * (spec != null && spec.Weights.TryGetValue(b.p, out var boost) ? boost : 1.0);
-            if (r <= w) return b.p;
-            r -= w;
+            if (r <= baseW[i].w) return baseW[i].p;
+            r -= baseW[i].w;
         }
         return Profession.Farmer;
     }
 
     private static int SampleAge(IRng rng)
     {
-        // 16..70 with peak around 28–40
+        // 16..70 with peak around ~30s
         double u = rng.NextDouble();
         return (int)Math.Clamp(16 + Math.Sqrt(u) * 40 + rng.NextDouble() * 10, 16, 70);
     }
-
-    private static SettlementSpecialties? TryGet<SettlementSpecialties>(EngineContext ctx, Settlement s)
-        => ctx.World.Components.Where(kv => ReferenceEquals(kv.Value, s)).Select(_ => default(SettlementSpecialties)).FirstOrDefault();
-
-    private static EntityId FindSettlementId(EngineContext ctx, Settlement s)
-        => ctx.World.Components.First(kv => ReferenceEquals(kv.Value, s)).Key;
 }

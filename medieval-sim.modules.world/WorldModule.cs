@@ -14,8 +14,8 @@ public sealed class WorldModule : IModule
     public void Configure(EngineBuilder b)
     {
         b.AddSystem(new PopulationGenerationSystem())
-         .AddSystem(new PassionAssignmentSystem())   // NEW
-         .AddSystem(new FamilyGenerationSystem())    // NEW
+         .AddSystem(new PassionAssignmentSystem())
+         .AddSystem(new FamilyGenerationSystem())
          .AddSystem(new MarketPricingSystem())
          .AddSystem(new LeadershipSelectionSystem())
          .AddSystem(new LeadershipStipendSystem())
@@ -29,7 +29,7 @@ public sealed class WorldModule : IModule
     {
         // ===== Factions =====
         var fEld = ctx.World.Create();
-        ctx.World.Set(fEld, new Faction
+        var cro = new Faction
         {
             Name = "Crown of Eldermere",
             Treasury = 120,
@@ -42,10 +42,12 @@ public sealed class WorldModule : IModule
                 MinRelationToTrade = -10,
                 Taxes = new TaxPolicy { TitheRate = 0.08, MarketFeeRate = 0.05, TransitTollPerUnit = 0.02 }
             }
-        });
+        };
+        ctx.World.Set(fEld, cro);
+        cro.SelfId = fEld;
 
         var fLeague = ctx.World.Create();
-        ctx.World.Set(fLeague, new Faction
+        var fre = new Faction
         {
             Name = "Free Cities League",
             Treasury = 200,
@@ -58,10 +60,12 @@ public sealed class WorldModule : IModule
                 MinRelationToTrade = 0,
                 Taxes = new TaxPolicy { TitheRate = 0.05, MarketFeeRate = 0.06, TransitTollPerUnit = 0.03 }
             }
-        });
+        };
+        ctx.World.Set(fLeague, fre);
+        fre.SelfId = fLeague;
 
         var fOrder = ctx.World.Create();
-        ctx.World.Set(fOrder, new Faction
+        var gre = new Faction
         {
             Name = "Grey Monastic Order",
             Treasury = 60,
@@ -74,7 +78,9 @@ public sealed class WorldModule : IModule
                 MinRelationToTrade = -5,
                 Taxes = new TaxPolicy { TitheRate = 0.10, MarketFeeRate = 0.03, TransitTollPerUnit = 0.01 }
             }
-        });
+        };
+        ctx.World.Set(fOrder, gre);
+        gre.SelfId = fOrder;
 
         // Relations
         ctx.World.Get<Faction>(fEld).Relations[fLeague] = +20;
@@ -86,48 +92,101 @@ public sealed class WorldModule : IModule
         EntityId NewMarket(string name)
         {
             var mid = ctx.World.Create();
-            ctx.World.Set(mid, new SettlementMarket { Name = name, PriceFood = 1.0 });
+            var mkt = new SettlementMarket { Name = name, PriceFood = 1.0 };
+            ctx.World.Set(mid, mkt);
+            mkt.SelfId = mid;
             return mid;
         }
 
-        // ===== Settlements + households
+        // ===== Settlements + households (with Economy + Specialties)
+
+        // Rivenshade — agrarian + brewing
         var a = ctx.World.Create();
-        ctx.World.Set(a, new Settlement
+        var riv = new Settlement
         {
             Name = "Rivenshade",
             FactionId = fEld,
             MarketId = NewMarket("Rivenshade Market"),
+            EconomyId = NewEconomy(ctx, "Rivenshade Economy", e => { e.WagePoolCoins = 120; }),
             FoodStock = 80
+        };
+        ctx.World.Set(a, riv);
+        riv.SelfId = a;
+        AddSpecialties(ctx, a, sp =>
+        {
+            sp.Weights[Profession.Farmer] = 2.0;
+            sp.Weights[Profession.Brewer] = 1.5;
+            sp.Weights[Profession.Miller] = 1.3;
         });
         SeedHouseholds(ctx, a, pop: 320, wealthAvg: 6, wealthVar: 3);
 
+        // Stoneford — farmers + woodcutters
         var b = ctx.World.Create();
-        ctx.World.Set(b, new Settlement
+        var sto = new Settlement
         {
             Name = "Stoneford",
             FactionId = fEld,
             MarketId = NewMarket("Stoneford Market"),
+            EconomyId = NewEconomy(ctx, "Stoneford Economy", e => { e.WagePoolCoins = 80; }),
             FoodStock = 40
+        };
+        ctx.World.Set(b, sto);
+        sto.SelfId = b;
+        AddSpecialties(ctx, b, sp =>
+        {
+            sp.Weights[Profession.Farmer] = 1.6;
+            sp.Weights[Profession.Woodcutter] = 1.5;
+            sp.Weights[Profession.Carpenter] = 1.3;
         });
         SeedHouseholds(ctx, b, pop: 180, wealthAvg: 4, wealthVar: 2);
 
+        // Port Kelda — merchants + smiths + caravaneers
         var c = ctx.World.Create();
-        ctx.World.Set(c, new Settlement
+        var por = new Settlement
         {
             Name = "Port Kelda",
             FactionId = fLeague,
             MarketId = NewMarket("Port Kelda Exchange"),
+            EconomyId = NewEconomy(ctx, "Port Kelda Economy", e =>
+            {
+                e.WagePoolCoins = 200;
+                e.DailyWage[Profession.Merchant] = 2.0;
+                e.DailyWage[Profession.Blacksmith] = 1.8;
+            }),
             FoodStock = 220
+        };
+        ctx.World.Set(c, por);
+        por.SelfId = c;
+        AddSpecialties(ctx, c, sp =>
+        {
+            sp.Weights[Profession.Merchant] = 2.5;
+            sp.Weights[Profession.Blacksmith] = 1.7;
+            sp.Weights[Profession.Caravaneer] = 1.5;
         });
         SeedHouseholds(ctx, c, pop: 220, wealthAvg: 10, wealthVar: 4);
 
+        // Grey Abbey — scribes/monks/healers
         var d = ctx.World.Create();
-        ctx.World.Set(d, new Settlement
+        var abb = new Settlement
         {
             Name = "Grey Abbey",
             FactionId = fOrder,
             MarketId = NewMarket("Abbey Court"),
+            EconomyId = NewEconomy(ctx, "Grey Abbey Economy", e =>
+            {
+                e.WagePoolCoins = 70;
+                e.DailyWage[Profession.Scribe] = 1.7;
+                e.DailyWage[Profession.Healer] = 1.6;
+            }),
             FoodStock = 15
+        };
+        ctx.World.Set(d, abb);
+        abb.SelfId = d;
+        AddSpecialties(ctx, d, sp =>
+        {
+            sp.Weights[Profession.Monk] = 2.2;
+            sp.Weights[Profession.Scribe] = 1.8;
+            sp.Weights[Profession.Healer] = 1.4;
         });
         SeedHouseholds(ctx, d, pop: 120, wealthAvg: 3, wealthVar: 1.5);
 
@@ -171,8 +230,6 @@ public sealed class WorldModule : IModule
             s.Households.Add(new Household { Size = size, Wealth = w, Food = food });
             remaining -= size;
         }
-
-        // cache pop
         s.Pop = pop;
     }
 
@@ -185,16 +242,14 @@ public sealed class WorldModule : IModule
             {
                 var s = ctx.World.Get<Settlement>(sid);
                 var m = ctx.World.Get<SettlementMarket>(s.MarketId);
-                m.IsFairDay = true;          // FeedingSystem halves fee on fair days
-                                             // Optional: inject a bit more supply signal
-                m.SupplyToday += Math.Max(0, s.FoodStock * 0.10);
-                // End of day reset happens in MarketPricingSystem at 23:00
-                ScheduleNext(next);          // re-schedule next week
+                m.IsFairDay = true;                 // FeedingSystem halves fee on fair days
+                m.SupplyToday += Math.Max(0, s.FoodStock * 0.10); // small supply bump
+                ScheduleNext(next);                 // schedule the following week
             });
         }
         ScheduleNext(ctx.Clock.Now);
     }
-    
+
     private static void ScheduleRandomBadHarvest(EngineContext ctx, EntityId sid)
     {
         void Next(DateTime from)
@@ -237,6 +292,7 @@ public sealed class WorldModule : IModule
             };
         cfg(e);
         ctx.World.Set(id, e);
+        e.SelfId = id;
         return id;
     }
 
@@ -246,6 +302,9 @@ public sealed class WorldModule : IModule
         var sp = new SettlementSpecialties();
         cfg(sp);
         ctx.World.Set(id, sp);
-    }
 
+        // Link to the owning settlement
+        var s = ctx.World.Get<Settlement>(sid);
+        s.SpecialtiesId = id;
+    }
 }

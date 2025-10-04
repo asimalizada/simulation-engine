@@ -12,28 +12,34 @@ public sealed class LeadershipStipendSystem : ISystem
     {
         if (ctx.Clock.Now.Hour != 6) return;
 
-        foreach (var kv in ctx.World.Components)
+        // Snapshot leadership components first
+        var leaderships = ctx.World.Components
+            .Where(kv => kv.Value is FactionLeadership)
+            .Select(kv => (FactionLeadership)kv.Value)
+            .ToList();
+
+        foreach (var L in leaderships)
         {
-            if (kv.Value is not FactionLeadership L) continue;
+            // Pay from the owning faction's treasury (requires OwnerFactionId on FactionLeadership)
+            var faction = ctx.World.Get<Faction>(L.OwnerFactionId);
 
-            // Find the owning faction (nearest preceding Faction in store)
-            var faction = ctx.World.Components.FirstOrDefault(x => x.Value is Faction).Value as Faction;
-            if (faction is null) continue;
-
-            Pay(L.Sovereign, L.SovereignStipend);
-            Pay(L.Chancellor, L.ChancellorStipend);
-            Pay(L.Marshal, L.MarshalStipend);
-
-            void Pay(PersonRef? pr, double amt)
-            {
-                if (pr is null || amt <= 0) return;
-                if (faction.Treasury < amt) { amt = faction.Treasury; faction.Treasury = 0; }
-                else faction.Treasury -= amt;
-
-                var s = ctx.World.Get<Settlement>(pr.Value.SettlementId);
-                var hh = s.Households[pr.Value.HouseholdIndex];
-                hh.Wealth += amt;
-            }
+            Pay(ref faction.Treasury, L.Sovereign, L.SovereignStipend, ctx);
+            Pay(ref faction.Treasury, L.Chancellor, L.ChancellorStipend, ctx);
+            Pay(ref faction.Treasury, L.Marshal, L.MarshalStipend, ctx);
         }
+    }
+
+    private static void Pay(ref double treasury, PersonRef? pr, double amount, EngineContext ctx)
+    {
+        if (pr is null || amount <= 0) return;
+
+        // Cap by available treasury
+        var pay = amount <= treasury ? amount : treasury;
+        if (pay <= 0) return;
+        treasury -= pay;
+
+        var s = ctx.World.Get<Settlement>(pr.Value.SettlementId);
+        var hh = s.Households[pr.Value.HouseholdIndex];
+        hh.Wealth += pay;
     }
 }
