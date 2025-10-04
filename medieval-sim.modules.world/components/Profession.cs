@@ -2,11 +2,20 @@
 
 public enum Profession
 {
-    Farmer, Miller, Baker, Brewer,
-    Fisher, Hunter, Woodcutter, Miner,
-    Blacksmith, Carpenter, Mason, Weaver, Tanner,
-    Merchant, Scribe, Healer, Priest, Monk,
-    Guard, Soldier, Noble, Caravaneer
+    // Agrarian & nature
+    Farmer, Shepherd, Fisher, Hunter, Woodcutter,
+
+    // Materials & industry
+    Carpenter, Mason, Miner, Tanner, Weaver, Dyer, Potter, Glassblower, Leatherworker, Tailor,
+
+    // Metal & advanced craft
+    Blacksmith, Jeweler, Shipwright, Alchemist, Brewer,
+
+    // Trade & services
+    Merchant, Caravaneer, Sailor, Scribe, Healer, Priest, Monk, Bard, Cook,
+
+    // Security & rule
+    Guard, Soldier, Noble
 }
 
 // Weighted specialties for a settlement

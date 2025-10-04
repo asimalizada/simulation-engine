@@ -2,6 +2,8 @@
 using medieval_sim.core.engine;
 using medieval_sim.core.RNG;
 using medieval_sim.modules.world.components;
+using medieval_sim.modules.world.services;
+using System.Text.RegularExpressions;
 
 namespace medieval_sim.modules.world.systems;
 
@@ -14,7 +16,6 @@ public sealed class PopulationGenerationSystem : ISystem
     {
         var rng = ctx.Rng;
 
-        // SNAPSHOT settlements once
         var settlements = ctx.World.Components
             .Where(kv => kv.Value is Settlement)
             .Select(kv => (id: kv.Key, s: (Settlement)kv.Value))
@@ -22,29 +23,64 @@ public sealed class PopulationGenerationSystem : ISystem
 
         foreach (var (sid, s) in settlements)
         {
-            // Optional fast gate: store a flag on Settlement so we don't redo work every tick
-            // Add this field to Settlement if you haven't yet: public bool PopulationInitialized;
             if (s.PopulationInitialized) continue;
 
             // Get specialties if you attached one to this settlement
             var spec = s.SpecialtiesId.Value != default ? ctx.World.Get<SettlementSpecialties>(s.SpecialtiesId) : null;
 
+            // We’ll need culture for naming and (optionally) kind for profession bias
+            var culture = s.Culture;
+            var kind = s.Kind;
+
+            var uniq = ctx.Resolve<UniqueNameRegistry>();
+
             // Fill households with people
             for (int h = 0; h < s.Households.Count; h++)
             {
                 var hh = s.Households[h];
+
                 while (hh.People.Count < hh.Size)
                 {
-                    var prof = SampleProfession(rng, spec);
+                    var prof = SampleProfession(rng, spec, culture, kind);
                     int age = SampleAge(rng);
                     double skill = Math.Clamp(age * 1.2 + rng.NextDouble() * 10, 0, 100);
+
+                    // Culture-aware name generation
+                    string family = NameGenerator.NextFamily(rng, culture);
+                    var (given, gender) = NameGenerator.NextGiven(rng, culture);
+
+                    string reserved = uniq.ReservePerson($"{given} {family}");
+                    int sp = reserved.LastIndexOf(' ');
+                    string finalGiven = sp > 0 ? reserved[..sp] : reserved;
+                    string finalFamily = sp > 0 ? reserved[(sp + 1)..] : "";
 
                     hh.People.Add(new Person
                     {
                         Age = age,
                         Profession = prof,
-                        Skill = skill
+                        Skill = skill,
+                        GivenName = finalGiven,
+                        FamilyName = finalFamily,
+                        Gender = gender
                     });
+                }
+
+                for (int i = 0; i < hh.People.Count; i++)
+                {
+                    var p = hh.People[i];
+                    if (string.IsNullOrWhiteSpace(p.GivenName))
+                    {
+                        string family = string.IsNullOrWhiteSpace(p.FamilyName)
+                            ? NameGenerator.NextFamily(rng, culture)
+                            : p.FamilyName;
+
+                        var (given, gender) = NameGenerator.NextGiven(rng, culture);
+                        string reserved = uniq.ReservePerson($"{given} {family}");
+                        int sp = reserved.LastIndexOf(' ');
+                        p.GivenName = sp > 0 ? reserved[..sp] : reserved;
+                        p.FamilyName = sp > 0 ? reserved[(sp + 1)..] : "";
+                        p.Gender = gender;
+                    }
                 }
             }
 
@@ -83,35 +119,56 @@ public sealed class PopulationGenerationSystem : ISystem
         }
     }
 
-    private static Profession SampleProfession(IRng rng, SettlementSpecialties? spec)
+    private static Profession SampleProfession(IRng rng, SettlementSpecialties? spec, Culture culture, SettlementKind kind)
     {
-        // baseline weights
-        var baseW = new (Profession p, double w)[]
+        // base weights
+        var W = new Dictionary<Profession, double>
         {
-                (Profession.Farmer, 3.0),(Profession.Miller,0.3),(Profession.Baker,0.6),
-                (Profession.Blacksmith,0.5),(Profession.Carpenter,0.6),(Profession.Mason,0.3),
-                (Profession.Fisher,0.4),(Profession.Hunter,0.4),(Profession.Woodcutter,0.5),
-                (Profession.Merchant,0.5),(Profession.Scribe,0.2),(Profession.Healer,0.2),
-                (Profession.Priest,0.2),(Profession.Monk,0.2),(Profession.Guard,0.6),
-                (Profession.Soldier,0.5),(Profession.Noble,0.05),(Profession.Caravaneer,0.3),
-                (Profession.Brewer,0.3)
+            [Profession.Farmer] = 2.2,[Profession.Shepherd] = 0.6,[Profession.Fisher] = 0.6,[Profession.Hunter] = 0.6,
+            [Profession.Woodcutter] = 0.6,[Profession.Carpenter] = 0.7,[Profession.Mason] = 0.5,[Profession.Miner] = 0.5,
+            [Profession.Tanner] = 0.3,[Profession.Weaver] = 0.5,[Profession.Dyer] = 0.3,[Profession.Potter] = 0.3,
+            [Profession.Glassblower] = 0.2,[Profession.Leatherworker] = 0.3,[Profession.Tailor] = 0.5,[Profession.Blacksmith] = 0.6,
+            [Profession.Jeweler] = 0.3,[Profession.Shipwright] = 0.2,[Profession.Alchemist] = 0.2,[Profession.Brewer] = 0.4,
+            [Profession.Merchant] = 0.6,[Profession.Caravaneer] = 0.3,[Profession.Sailor] = 0.2,[Profession.Scribe] = 0.3,
+            [Profession.Healer] = 0.3,[Profession.Priest] = 0.2,[Profession.Monk] = 0.2,[Profession.Bard] = 0.2,
+            [Profession.Cook] = 0.3,[Profession.Guard] = 0.5,[Profession.Soldier] = 0.5,[Profession.Noble] = 0.05
         };
 
-        // sum with specialty multipliers
-        double sum = 0;
-        for (int i = 0; i < baseW.Length; i++)
+        void B(Profession p, double m) => W[p] = Math.Max(0.0, W[p] * m);
+
+        // culture flavor
+        switch (culture)
         {
-            var (p, w) = baseW[i];
-            if (spec != null && spec.Weights.TryGetValue(p, out var boost)) w *= boost;
-            sum += w;
-            baseW[i].w = w; // reuse weighted value
+            case Culture.Keshari: B(Profession.Merchant, 1.4); B(Profession.Caravaneer, 1.5); B(Profession.Scribe, 1.2); B(Profession.Farmer, 0.85); break;
+            case Culture.Tzanel: B(Profession.Farmer, 1.6); B(Profession.Healer, 1.3); B(Profession.Blacksmith, 0.8); break;
+            case Culture.Yura: B(Profession.Miner, 1.6); B(Profession.Mason, 1.4); B(Profession.Hunter, 1.2); B(Profession.Farmer, 0.8); break;
+            case Culture.Ashari: B(Profession.Healer, 1.5); B(Profession.Hunter, 1.3); B(Profession.Woodcutter, 1.2); B(Profession.Blacksmith, 0.8); break;
+            case Culture.Shokai: B(Profession.Blacksmith, 1.3); B(Profession.Shipwright, 1.5); B(Profession.Scribe, 1.2); B(Profession.Farmer, 0.9); break;
+            case Culture.Norren: B(Profession.Hunter, 1.6); B(Profession.Fisher, 1.2); B(Profession.Guard, 1.2); B(Profession.Farmer, 0.75); break;
+            case Culture.Zhurkan: B(Profession.Soldier, 1.6); B(Profession.Guard, 1.3); B(Profession.Caravaneer, 1.2); B(Profession.Scribe, 0.8); break;
+            case Culture.Kaenji: B(Profession.Blacksmith, 1.5); B(Profession.Mason, 1.4); B(Profession.Alchemist, 1.4); B(Profession.Farmer, 0.9); break;
+            case Culture.Aerani: B(Profession.Sailor, 1.8); B(Profession.Fisher, 1.5); B(Profession.Merchant, 1.3); B(Profession.Miner, 0.8); break;
+            case Culture.Qazari: B(Profession.Blacksmith, 1.5); B(Profession.Mason, 1.3); B(Profession.Priest, 1.2); B(Profession.Farmer, 0.9); break;
         }
 
+        // settlement kind flavor
+        if (kind == SettlementKind.Port) { B(Profession.Sailor, 2.0); B(Profession.Fisher, 1.4); }
+        if (kind == SettlementKind.Caravanserai) { B(Profession.Caravaneer, 2.0); B(Profession.Merchant, 1.3); }
+        if (kind == SettlementKind.Castle) { B(Profession.Guard, 1.8); B(Profession.Soldier, 1.6); B(Profession.Blacksmith, 1.2); }
+        if (kind == SettlementKind.Mine) { B(Profession.Miner, 2.0); B(Profession.Mason, 1.3); B(Profession.Blacksmith, 1.2); }
+        if (kind == SettlementKind.City) { B(Profession.Merchant, 1.3); B(Profession.Scribe, 1.3); B(Profession.Healer, 1.2); }
+
+        // specialties (your existing weights)
+        if (spec != null)
+            foreach (var kv in spec.Weights)
+                W[kv.Key] = Math.Max(0.0, W.GetValueOrDefault(kv.Key, 0.0) * kv.Value);
+
+        // roulette
+        double sum = 0; foreach (var v in W.Values) sum += v;
         double r = rng.NextDouble() * sum;
-        for (int i = 0; i < baseW.Length; i++)
+        foreach (var kv in W)
         {
-            if (r <= baseW[i].w) return baseW[i].p;
-            r -= baseW[i].w;
+            if ((r -= kv.Value) <= 0) return kv.Key;
         }
         return Profession.Farmer;
     }

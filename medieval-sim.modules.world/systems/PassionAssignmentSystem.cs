@@ -23,16 +23,27 @@ public sealed class PassionAssignmentSystem : ISystem
                     if (p.Passions.Count > 0) continue;
 
                     var primary = PassionMaps.PrimaryFor(p.Profession);
-                    p.Passions.Add(new PassionIntensity { Passion = primary, Level = 0.6 + rng.NextDouble() * 0.35 }); // 0.6..0.95
+                    p.Passions.Add(new PassionIntensity
+                    {
+                        Passion = primary,
+                        Level = 0.6 + rng.NextDouble() * 0.35 // ~0.6..0.95
+                    });
 
-                    // up to 2 secondaries (light)
-                    foreach (var sec in PassionMaps.SecondaryFor(p.Profession).OrderBy(_ => rng.NextDouble()).Take(rng.Next(0, 2)))
-                        p.Passions.Add(new PassionIntensity { Passion = sec, Level = 0.25 + rng.NextDouble() * 0.35 }); // 0.25..0.6
+                    var secondaries = PassionMaps.SecondaryFor(p.Profession);
+                    if (secondaries.Count > 0 && rng.NextDouble() < 0.7)
+                    {
+                        var sec = secondaries[rng.Next(0, secondaries.Count)];
+                        p.Passions.Add(new PassionIntensity
+                        {
+                            Passion = sec,
+                            Level = 0.25 + rng.NextDouble() * 0.35 // ~0.25..0.60
+                        });
+                    }
 
                     // small chance of a wildcard passion for diversity
                     if (rng.NextDouble() < 0.10)
                     {
-                        var any = (Passion)rng.Next(0, System.Enum.GetValues(typeof(Passion)).Length);
+                        var any = (Passion)rng.Next(0, Enum.GetValues(typeof(Passion)).Length);
                         if (!p.Passions.Any(x => x.Passion == any))
                             p.Passions.Add(new PassionIntensity { Passion = any, Level = 0.2 + rng.NextDouble() * 0.25 });
                     }

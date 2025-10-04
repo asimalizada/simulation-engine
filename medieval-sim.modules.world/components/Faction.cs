@@ -7,6 +7,7 @@ public sealed class Faction
     public EntityId SelfId;
     public string Name = "";
     public double Treasury = 0;
+    public Culture Culture;
 
     // Per-faction knobs
     public FactionPolicy Policy = new();

@@ -99,8 +99,8 @@ public sealed class FamilyGenerationSystem : ISystem
             return top switch
             {
                 Profession.Blacksmith => "Smith",
-                Profession.Miller => "Miller",
-                Profession.Baker => "Baker",
+                //Profession.Miller => "Miller",
+                //Profession.Baker => "Baker",
                 Profession.Carpenter => "Carpenter",
                 Profession.Mason => "Stone",
                 Profession.Weaver => "Weaver",
