@@ -1,5 +1,6 @@
 ﻿using medieval_sim.core.RNG;
 using medieval_sim.modules.world.components;
+using System.Text.RegularExpressions;
 
 namespace medieval_sim.modules.world.services;
 
@@ -88,7 +89,7 @@ public static class NameGenerator
     {
         // 60% combinator, 40% curated
         return rng.NextDouble() < 0.6
-            ? Titlecase(Combine(rng, Syll[culture], suffix: SetSuffix(culture, rng)))
+            ? Titlecase(Combine(rng, Syll[culture], suffix: SetSuffix(culture, rng), culture: culture))
             : Titlecase(Pick(rng, SettlementBase[culture]));
     }
 
@@ -112,7 +113,7 @@ public static class NameGenerator
         var male = rng.NextDouble() < 0.5;
         var curated = male ? MaleBase[culture] : FemaleBase[culture];
         string name = rng.NextDouble() < 0.6
-            ? Titlecase(Combine(rng, Syll[culture]))
+            ? Titlecase(Combine(rng, Syll[culture], culture: culture))
             : Pick(rng, curated);
         return (name, male ? Gender.Male : Gender.Female);
     }
@@ -122,19 +123,20 @@ public static class NameGenerator
         // 50% curated house, 50% constructed family
         return rng.NextDouble() < 0.5
             ? Pick(rng, FamilyBase[culture])
-            : Titlecase(Combine(rng, Syll[culture], familyStyle: true));
+            : Titlecase(Combine(rng, Syll[culture], familyStyle: true, culture: culture));
     }
 
-    private static string Combine(IRng rng, (string[] A, string[] B, string[] C) s, bool familyStyle = false, string? suffix = null)
+    private static string Combine(IRng rng, (string[] A, string[] B, string[] C) s, bool familyStyle = false, string? suffix = null, Culture? culture = null)
     {
         var a = s.A[rng.Next(0, s.A.Length)];
         var b = s.B[rng.Next(0, s.B.Length)];
         var c = s.C[rng.Next(0, s.C.Length)];
         string core = a + b + (rng.NextDouble() < 0.5 ? "" : c);
+
         if (familyStyle)
         {
-            // allow particles
-            if (rng.NextDouble() < 0.2) core = "al-" + core;
+            bool allowAl = culture is Culture.Keshari or Culture.Qazari;
+            if (allowAl && rng.NextDouble() < 0.2) core = "al-" + core;
             if (rng.NextDouble() < 0.1) core = core + (rng.NextDouble() < 0.5 ? "i" : "en");
         }
         return suffix is null ? core : $"{core} {suffix}";

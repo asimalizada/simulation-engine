@@ -99,7 +99,7 @@ public static class Program
         foreach (var (fid, f) in factions)
         {
             var leaderTxt = leadershipByFaction.TryGetValue(fid, out var L)
-                ? $"  Leaders: Soverein: {ShortLeader(ctx, L.Sovereign)} / Chancellor: {ShortLeader(ctx, L.Chancellor)} / Marshall: {ShortLeader(ctx, L.Marshal)}"
+                ? $"  Leaders: Sovereign: {ShortLeader(ctx, L.Sovereign)} / Chancellor: {ShortLeader(ctx, L.Chancellor)} / Marshall: {ShortLeader(ctx, L.Marshal)}"
                 : string.Empty;
 
             Console.WriteLine($"  Faction: {f.Name}  Treasury={Math.Round(f.Treasury, 1)}  Taxes={f.Policy.Taxes.TitheRate:P0}/{f.Policy.Taxes.MarketFeeRate:P0}/{f.Policy.Taxes.TransitTollPerUnit:0.00}{leaderTxt}");

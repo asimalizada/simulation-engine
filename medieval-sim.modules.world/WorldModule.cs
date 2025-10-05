@@ -29,14 +29,6 @@ public sealed class WorldModule : IModule
     {
         // ----- local helpers -----
         // ===== Markets helper
-        EntityId NewMarket(string name)
-        {
-            var mid = ctx.World.Create();
-            var mkt = new SettlementMarket { Name = name, PriceFood = 1.0 };
-            ctx.World.Set(mid, mkt);
-            mkt.SelfId = mid;
-            return mid;
-        }
 
         ctx.Register(new UniqueNameRegistry());
         
@@ -504,16 +496,16 @@ public sealed class WorldModule : IModule
                 wagePool: 170, foodStock: 90, productionMultiplier: 1.05,
                 specialties: sp =>
                 {
-                    sp.Weights[Profession.Merchant] += 1.0;
+                    sp.Boost(Profession.Merchant, 1.0);
                     if (tradeKind == SettlementKind.Port)
                     {
-                        sp.Weights[Profession.Sailor] += 1.5;
-                        sp.Weights[Profession.Fisher] += 1.2;
-                        sp.Weights[Profession.Shipwright] += 1.0;
+                        sp.Boost(Profession.Sailor, 2.0);
+                        sp.Boost(Profession.Fisher, 1.4);
+                        sp.Boost(Profession.Shipwright, 1.4);
                     }
                     if (tradeKind == SettlementKind.Caravanserai)
                     {
-                        sp.Weights[Profession.Caravaneer] += 1.5;
+                        sp.Boost(Profession.Caravaneer, 2.0);
                     }
                 },
                 economyTweaks: e =>
@@ -539,13 +531,13 @@ public sealed class WorldModule : IModule
                 {
                     if (industrialKind == SettlementKind.Mine)
                     {
-                        sp.Weights[Profession.Miner] += 1.8;
-                        sp.Weights[Profession.Mason] += 0.8;
-                        sp.Weights[Profession.Blacksmith] += 0.5;
+                        sp.Boost(Profession.Miner, 1.8);
+                        sp.Boost(Profession.Mason, 1.3);
+                        sp.Boost(Profession.Blacksmith, 1.2);
                     }
                     else
                     {
-                        sp.Weights[Profession.Carpenter] += 0.6;
+                        sp.Boost(Profession.Carpenter, 0.6);
                     }
                 }
             );
@@ -559,9 +551,9 @@ public sealed class WorldModule : IModule
                 wagePool: 110, foodStock: 95, productionMultiplier: 1.10,
                 specialties: sp =>
                 {
-                    sp.Weights[Profession.Farmer] += 1.6;
-                    sp.Weights[Profession.Woodcutter] += 0.6;
-                    sp.Weights[Profession.Brewer] += 0.3;
+                    sp.Boost(Profession.Farmer, 1.6);
+                    sp.Boost(Profession.Woodcutter, 1.6);
+                    sp.Boost(Profession.Brewer, 1.3);
                 }
             );
             AddToIndex(villageA);
@@ -574,9 +566,9 @@ public sealed class WorldModule : IModule
                 wagePool: 105, foodStock: 90, productionMultiplier: 1.08,
                 specialties: sp =>
                 {
-                    sp.Weights[Profession.Farmer] += 1.5;
-                    if (cult == Culture.Tzanel) sp.Weights[Profession.Healer] += 0.4;
-                    if (cult == Culture.Norren) sp.Weights[Profession.Hunter] += 0.5;
+                    sp.Boost(Profession.Farmer, 1.5);
+                    if (cult == Culture.Tzanel) sp.Boost(Profession.Healer, 1.4);
+                    if (cult == Culture.Norren) sp.Boost(Profession.Hunter, 1.5);
                 }
             );
             AddToIndex(villageB);
@@ -589,10 +581,10 @@ public sealed class WorldModule : IModule
                 wagePool: 95, foodStock: 60, productionMultiplier: 1.00,
                 specialties: sp =>
                 {
-                    sp.Weights[Profession.Scribe] += 0.9;
-                    sp.Weights[Profession.Priest] += 0.8;
-                    sp.Weights[Profession.Monk] += 0.8;
-                    sp.Weights[Profession.Healer] += 0.6;
+                    sp.Boost(Profession.Scribe, 1.6);
+                    sp.Boost(Profession.Priest, 1.6);
+                    sp.Boost(Profession.Monk, 1.6);
+                    sp.Boost(Profession.Healer, 1.4);
                 }
             );
             AddToIndex(shrine);
@@ -605,8 +597,8 @@ public sealed class WorldModule : IModule
                 wagePool: 140, foodStock: 85, productionMultiplier: 1.04,
                 specialties: sp =>
                 {
-                    sp.Weights[Profession.Merchant] += 0.8;
-                    sp.Weights[Profession.Carpenter] += 0.4;
+                    sp.Boost(Profession.Merchant, 1.5);
+                    sp.Boost(Profession.Carpenter, 1.3);
                 }
             );
             AddToIndex(market);
@@ -619,52 +611,12 @@ public sealed class WorldModule : IModule
                 wagePool: 115, foodStock: 55, productionMultiplier: 0.97,
                 specialties: sp =>
                 {
-                    sp.Weights[Profession.Guard] += 1.1;
-                    sp.Weights[Profession.Soldier] += 0.9;
-                    sp.Weights[Profession.Hunter] += 0.4;
+                    sp.Boost(Profession.Guard, 1.6);
+                    sp.Boost(Profession.Soldier, 1.4);
+                    sp.Boost(Profession.Hunter, 1.2);
                 }
             );
             AddToIndex(outpost);
-
-            #region Old
-
-            //foreach (var s in f.Settlements)
-            //{
-            //    var sid = ctx.World.Create();
-            //    var culture = f.Culture;
-            //    var autoName = NameGenerator.NextSettlement(ctx.Rng, culture);
-            //    var set = new Settlement
-            //    {
-            //        Name = s.Name ?? autoName,
-            //        FactionId = fid,
-            //        MarketId = NewMarket($"{(s.Name ?? autoName)} Market"),
-            //        EconomyId = NewEconomy(ctx, $"{(s.Name ?? autoName)} Economy", e =>
-            //        {
-            //            e.WagePoolCoins = s.WagePool;
-            //            // faction-wide wage multipliers
-            //            foreach (var kv in f.WageTweaks)
-            //                e.DailyWage[kv.Key] = Math.Max(0.5, e.DailyWage[kv.Key] * kv.Value);
-            //        }),
-            //        FoodStock = s.Food,
-            //        ProductionMultiplier = s.Prod,
-            //        Culture = culture
-            //    };
-
-            //    // unique name
-            //    var uniq = ctx.Resolve<UniqueNameRegistry>();
-            //    var rawName = NameGenerator.NextSettlement(ctx.Rng, culture);
-            //    var finalName = uniq.ReserveSettlement(rawName);
-            //    set.Name = finalName;
-
-            //    ctx.World.Set(sid, set);
-            //    set.SelfId = sid;
-
-            //    AddSpecialties(ctx, sid, s.Spec);
-            //    SeedHouseholds(ctx, sid, pop: s.Pop, wealthAvg: 6, wealthVar: 3);
-
-            //    settlementIds[set.Name] = sid;
-            //}
-            #endregion
         }
 
         // ----- Relations (a few flavorful links) -----

@@ -24,4 +24,13 @@ public sealed class SettlementSpecialties
     // e.g., { Farmer: 2.0, Fisher: 1.5 } → boosts chance & wage
     public readonly Dictionary<Profession, double> Weights = new();
     public double SpecialtyWageBonus = 0.25; // +25% wage if profession is a specialty
+
+    public void Boost(Profession p, double factor)
+    {
+        var d = Weights;
+        if (d.TryGetValue(p, out var current))
+            d[p] = current * factor;
+        else
+            d[p] = factor;
+    }
 }

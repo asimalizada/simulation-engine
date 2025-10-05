@@ -46,7 +46,6 @@ public sealed class LeadershipSelectionSystem : ISystem
 
     private static void SelectLeaders(EngineContext ctx, EntityId factionId, Faction f, FactionLeadership lead)
     {
-        // SNAPSHOT all persons belonging to settlements of this faction
         var people = ctx.World.Components
             .Where(kv => kv.Value is Settlement s && s.FactionId.Equals(factionId))
             .SelectMany(kv =>
@@ -61,25 +60,31 @@ public sealed class LeadershipSelectionSystem : ISystem
 
         if (people.Count == 0) return;
 
-        // Scoring helpers
-        static double Score((PersonRef pref, Person p, Settlement s) x, Func<Profession, bool> prefer)
+        // Profession buckets 
+        static bool IsNoble(Profession p) => p == Profession.Noble || p == Profession.Merchant;
+        static bool IsAdmin(Profession p) => p == Profession.Scribe || p == Profession.Merchant || p == Profession.Priest;
+        static bool IsSoldier(Profession p) => p == Profession.Soldier || p == Profession.Guard || p == Profession.Blacksmith;
+
+        // Central scoring; slight bump for faction capital residents
+        static double Score((PersonRef pref, Person p, Settlement s) x, Func<Profession, bool> prefer, bool capitalBonus)
         {
             double prof = prefer(x.p.Profession) ? 40 : 0;
             double wealth = x.s.Households[x.pref.HouseholdIndex].Wealth;
             double wScore = Math.Min(20, wealth);
             double age = (x.p.Age >= 25 && x.p.Age <= 60) ? 10 : 0;
-            return prof + x.p.Skill + wScore + age;
+            double capital = (capitalBonus && x.s.IsCapital) ? 5 : 0;
+            return prof + x.p.Skill + wScore + age + capital;
         }
-        static bool IsNoble(Profession p) => p == Profession.Noble || p == Profession.Merchant;
-        static bool IsAdmin(Profession p) => p == Profession.Scribe || p == Profession.Merchant || p == Profession.Priest;
-        static bool IsSoldier(Profession p) => p == Profession.Soldier || p == Profession.Guard || p == Profession.Blacksmith;
 
-        var sovereign = people.OrderByDescending(x => Score(x, IsNoble)).First();
-        var chancellor = people.OrderByDescending(x => Score(x, IsAdmin)).First();
-        var marshal = people.OrderByDescending(x => Score(x, IsSoldier)).First();
+        var sovereign = people.OrderByDescending(x => Score(x, IsNoble, capitalBonus: true)).First();
+        var chancellor = people.Where(x => !x.pref.Equals(sovereign.pref))
+                               .OrderByDescending(x => Score(x, IsAdmin, capitalBonus: false))
+                               .FirstOrDefault();
+        var marshalPool = people.Where(x => !x.pref.Equals(sovereign.pref) &&(chancellor.p is null || !x.pref.Equals(chancellor.pref)));
+        var marshal = marshalPool.OrderByDescending(x => Score(x, IsSoldier, capitalBonus: false)).FirstOrDefault();
 
         lead.Sovereign = sovereign.pref;
-        lead.Chancellor = chancellor.pref;
-        lead.Marshal = marshal.pref;
+        if (chancellor.p is not null) lead.Chancellor = chancellor.pref;
+        if (marshal.p is not null) lead.Marshal = marshal.pref;
     }
 }

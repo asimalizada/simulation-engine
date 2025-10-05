@@ -2,6 +2,7 @@
 using medieval_sim.core.engine;
 using medieval_sim.core.RNG;
 using medieval_sim.modules.world.components;
+using medieval_sim.modules.world.services;
 
 namespace medieval_sim.modules.world.systems;
 
@@ -86,29 +87,30 @@ public sealed class FamilyGenerationSystem : ISystem
 
     private static string SurnameFromSpecialtyOrRandom(EngineContext ctx, Settlement s, IRng rng)
     {
-        string[] baseNames = { "Oakheart", "Rivers", "Hillman", "Miller", "Smith", "Baker", "Weaver", "Stone", "Carter", "Fletcher", "Cooper", "Barley", "Goodman" };
+        return NameGenerator.NextFamily(rng, s.Culture);
+        //string[] baseNames = { "Oakheart", "Rivers", "Hillman", "Miller", "Smith", "Baker", "Weaver", "Stone", "Carter", "Fletcher", "Cooper", "Barley", "Goodman" };
 
-        var spec = ctx.World.Components
-            .Where(kv => kv.Value is SettlementSpecialties)
-            .Select(kv => (SettlementSpecialties)kv.Value)
-            .FirstOrDefault();
+        //var spec = ctx.World.Components
+        //    .Where(kv => kv.Value is SettlementSpecialties)
+        //    .Select(kv => (SettlementSpecialties)kv.Value)
+        //    .FirstOrDefault();
 
-        if (spec is not null && spec.Weights.Count > 0)
-        {
-            var top = spec.Weights.OrderByDescending(x => x.Value).First().Key;
-            return top switch
-            {
-                Profession.Blacksmith => "Smith",
-                //Profession.Miller => "Miller",
-                //Profession.Baker => "Baker",
-                Profession.Carpenter => "Carpenter",
-                Profession.Mason => "Stone",
-                Profession.Weaver => "Weaver",
-                Profession.Farmer => "Barley",
-                Profession.Caravaneer => "Carter",
-                _ => baseNames[rng.Next(0, baseNames.Length)]
-            };
-        }
-        return baseNames[rng.Next(0, baseNames.Length)];
+        //if (spec is not null && spec.Weights.Count > 0)
+        //{
+        //    var top = spec.Weights.OrderByDescending(x => x.Value).First().Key;
+        //    return top switch
+        //    {
+        //        Profession.Blacksmith => "Smith",
+        //        //Profession.Miller => "Miller",
+        //        //Profession.Baker => "Baker",
+        //        Profession.Carpenter => "Carpenter",
+        //        Profession.Mason => "Stone",
+        //        Profession.Weaver => "Weaver",
+        //        Profession.Farmer => "Barley",
+        //        Profession.Caravaneer => "Carter",
+        //        _ => baseNames[rng.Next(0, baseNames.Length)]
+        //    };
+        //}
+        //return baseNames[rng.Next(0, baseNames.Length)];
     }
 }
