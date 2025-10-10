@@ -6,7 +6,7 @@ namespace medieval_sim.modules.world.systems;
 
 public sealed class MarketPricingSystem : ISystem
 {
-    public int Order => 18; // before FeedingSystem (which buys at replenish)
+    public int Order => 18;
 
     private const double Alpha = 0.08;
 

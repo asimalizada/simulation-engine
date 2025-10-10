@@ -36,16 +36,6 @@ public sealed class FoodProductionSystem : ISystem
         }
     }
 
-    private static int CurrentPop(Settlement s)
-    {
-        if (s.Households.Count > 0)
-        {
-            int sum = 0; foreach (var h in s.Households) sum += h.Size;
-            s.Pop = sum;
-        }
-        return s.Pop;
-    }
-
     private static T? TryGet<T>(EngineContext ctx, Settlement s) where T : class
     {
         foreach (var kv in ctx.World.Components)
